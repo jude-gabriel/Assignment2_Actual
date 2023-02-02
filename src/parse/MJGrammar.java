@@ -114,6 +114,8 @@ public class MJGrammar
 	//================================================================
 
 	//: <stmt> ::= <assign> `; => pass
+	//; <stmt> ::= # `;+ =>
+	public Statement newSemicolon(int pos) { return new Block(pos, new StatementList(null)); }
 
 	//: <stmt> ::= <callExp> `; =>
 	public Statement newCallStatement(Exp aobj, int pos,  String aMethName, ExpList aparams)
@@ -220,6 +222,10 @@ public class MJGrammar
 	}
 
 	//// TYPE 5 EXP ////
+	//: <exp5> ::= <exp5> # `instanceof <type> =>
+	public Exp newInstanceOf(Exp ae1, int pos, Type at1) { return new InstanceOf(pos, ae1, at1); }
+
+
 	//: <exp5> ::= <exp5> # `> <exp4> =>
 	public Exp newGreaterThan(Exp ae1, int pos, Exp ae2) { return new GreaterThan(pos, ae1, ae2); }
 
