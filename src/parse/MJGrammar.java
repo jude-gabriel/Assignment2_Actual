@@ -1,4 +1,6 @@
 package parse;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import errorMsg.*;
 import syntaxtree.*;
@@ -114,31 +116,68 @@ public class MJGrammar
 	//================================================================
 
 	//: <stmt> ::= <assign> `; => pass
-	//; <stmt> ::= # `;+ =>
-	public Statement newSemicolon(int pos) { return new Block(pos, new StatementList(null)); }
 
-	//: <stmt> ::= <callExp> `; =>
-	public Statement newCallStatement(Exp aobj, int pos,  String aMethName, ExpList aparams)
+
+	//: <stmt> ::= # `if `( <exp> `) <stmt> !`else # =>
+	public Statement newIfNoNoElse(int pos, Exp ex, Statement s1, int pos2)
 	{
-		if(aparams == null) aparams = new ExpList();
-		Call call = new Call(pos, aobj, aMethName, aparams);
-		return new CallStatement(pos, call);
+		return new If(pos, ex, s1, new Block(pos2, new StatementList()));
 	}
-	//: <stmt> ::= <callExp2> `; =>
-	public Statement newCallThisStatement(int pos, String aMethName, ExpList aparams)
+	//: <stmt> ::= # `if `( <exp> `) <stmt> `else <stmt> =>
+	public Statement newIfWithElse(int pos, Exp ex, Statement s1, Statement s2)
 	{
-		if(aparams == null) aparams = new ExpList();
-		Exp newThis = new This(pos);
-		Call call = new Call(pos, newThis, aMethName, aparams);
-		return new CallStatement(pos, call);
+		return new If(pos, ex, s1, s2);
 	}
-	//: <stmt> ::= <callExp3> `; =>
-	public Statement newCallSuperStatement(int pos, String aMethName, ExpList aparams)
+
+	//: <stmt> ::= # `while `( <exp> `) <stmt> =>
+	public Statement newWhile(int pos, Exp exp, Statement statement) { return new While(pos, exp, statement); }
+
+	//: <stmt> ::= # `for `( forAssignment? `; #<exp>? `; # forIncrement? `) # <stmt> =>
+	public Statement newFor(int pos, Statement s1, int pos1, Exp e, int pos2, Statement s2, int pos3, Statement s3)
 	{
-		if(aparams == null) aparams = new ExpList();
-		Exp newSuper = new Super(pos);
-		Call call = new Call(pos, newSuper, aMethName, aparams);
-		return new CallStatement(pos, call);
+		// Increment level block
+		List<Statement> list1 = Arrays.asList(s3, s2);
+		Block block = new Block(pos, new StatementList(list1));
+
+		// Top Level Block
+		if(e == null) e = new True(pos1);
+		While w = new While(pos, e, block);
+		List<Statement> list2 = Arrays.asList(s1, w);
+		return new Block(pos, new StatementList(list2));
+	}
+	//: forAssignment ::= callStmt => pass
+	//: forAssignment ::= <assign> => pass
+	//: forAssignment ::= <local var decl> => pass
+	//: forIncrement ::= callStmt => pass
+	//: forIncrement ::= <assign> => pass
+	//: callStmt ::= # <callExp> => Statement callStatementFor(int, Exp)
+	//: callStmt ::= # <callExp2> => Statement callStatementFor(int, Exp)
+	//: callStmt ::= # <callExp3> => Statement callStatementFor(int, Exp)
+	public Statement callStatementFor(int pos, Exp call)
+	{
+		return new CallStatement(pos, (Call)call);
+	}
+
+
+
+
+	//: <stmt> ::= # `; =>
+	public Statement newSemicolon(int pos) { return new Block(pos, new StatementList()); }
+
+	//: <stmt> ::= # <callExp> `; =>
+	public Statement newCallStatement(int pos,  Exp call )
+	{
+		return new CallStatement(pos, (Call) call);
+	}
+	//: <stmt> ::= # <callExp2> `; =>
+	public Statement newCallThisStatement(int pos, Exp call)
+	{
+		return new CallStatement(pos, (Call) call);
+	}
+	//: <stmt> ::= # <callExp3> `; =>
+	public Statement newCallSuperStatement(int pos, Exp call)
+	{
+		return new CallStatement(pos, (Call) call);
 	}
 	
 	//: <stmt> ::= # `{ <stmt>* `} =>
@@ -328,13 +367,20 @@ public class MJGrammar
 	//: <exp1> ::= `new # ID `( `) =>
 	public Exp newNewObject(int pos, String id) { return new NewObject(pos, new IdentifierType(pos, id)); }
 
-	//: <exp1> ::= <callExp> =>
+	//: <exp1> ::= <callExp> =>pass
+	//: <exp1> ::= <callExp2> => pass
+	//: <exp1> ::= <callExp3> => pass
+
+	//	STUCK ON THIS ONE
+	////: <exp1> ::=  `( <exp> `) => pass
+
+	//: <callExp> ::= <exp1> `. # ID `( <expList>? `) =>
 	public Exp newCall(Exp aobj, int pos, String aMethName, ExpList aparams)
 	{
 		if(aparams == null) aparams = new ExpList();
 		return new Call(pos, aobj, aMethName, aparams);
 	}
-	//: <exp1> ::= <callExp2> =>
+	//: <callExp2> ::= # ID `( <expList>? `) =>
 	public Exp newCallThis(int pos, String aMethName, ExpList aparams)
 	{
 
@@ -342,20 +388,13 @@ public class MJGrammar
 		Exp newThis = new This(pos);
 		return new Call(pos, newThis, aMethName, aparams);
 	}
-	//: <exp1> ::= <callExp3> =>
+	//: <callExp3> ::= `super `. # ID `( <expList>? `) =>
 	public Exp newCallSuper(int pos, String aMethName, ExpList aparams)
 	{
 		if(aparams == null) aparams = new ExpList();
 		Exp newSuper = new Super(pos);
 		return new Call(pos, newSuper, aMethName, aparams);
 	}
-
-	//	STUCK ON THIS ONE
-	////: <exp1> ::=  `( <exp> `) => pass
-
-	//: <callExp> ::= <exp1> `. # ID `( <expList>? `) => pass
-	//: <callExp2> ::= # ID `( <expList>? `) => pass
-	//: <callExp3> ::= `super `. # ID `( <expList>? `) => pass
 
 
 	// Expression List
