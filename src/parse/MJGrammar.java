@@ -2,6 +2,8 @@ package parse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+
 import errorMsg.*;
 import syntaxtree.*;
 
@@ -77,18 +79,79 @@ public class MJGrammar
 		return new Program(pos, new ClassDeclList(vec));
 	}
 
-	//: <class decl> ::= `class # ID `{ <decl in class>* `} =>
-	public ClassDecl createClassDecl(int pos, String name, List<Decl> vec) {
-		return new ClassDecl(pos, name, "Object", new DeclList(vec));
+
+
+	/********* Class and Method Decl ************/
+
+	//: <class decl> ::= `class # ID classExtends? `{ <decl in class>* `} =>
+	public ClassDecl createClassDecl(int pos, String name, String extended, List<Decl> vec) {
+		if(extended == null)
+		{
+			return new ClassDecl(pos, name, "Object", new DeclList(vec));
+		}
+		return new ClassDecl(pos, name, extended, new DeclList(vec));
 	}
+
+	//: classExtends ::= `extends ID => pass
 
 	//: <decl in class> ::= <method decl> => pass
-
-	//: <method decl> ::= `public `void # ID `( `) `{ <stmt>* `} =>
-	public Decl createMethodDeclVoid(int pos, String name, List<Statement> stmts) {
-		return new MethodDeclVoid(pos, name, new VarDeclList(new VarDeclList()),
-				new StatementList(stmts));
+	//: <decl in class> ::= <inst var decl> => pass
+	//: <inst var decl> ::= # <type> ID `; =>
+	public Decl instanceVarDecl(int pos, Type t, String name)
+	{
+		return new InstVarDecl(pos, t, name);
 	}
+
+	//: <method decl> ::= `public <type> # ID `( formalList? `) `{ <stmt>* `return <exp> `; `} =>
+	public Decl createMethodDeclNonVoid(Type t, int pos, String name, List<VarDecl> vars, List<Statement> stmts, Exp exp)
+	{
+		if(vars == null)
+		{
+			return new MethodDeclNonVoid(pos, t, name, new VarDeclList(new VarDeclList()), new StatementList(stmts), exp);
+		}
+		return new MethodDeclNonVoid(pos, t, name, new VarDeclList(vars), new StatementList(stmts), exp);
+	}
+
+	//: <method decl> ::= `public `void # ID `( formalList? `) `{ <stmt>* `} =>
+	public Decl createMethodDeclVoid(int pos, String name, List<VarDecl> vars, List<Statement> stmts) {
+		if( vars == null)
+		{
+			return new MethodDeclVoid(pos, name, new VarDeclList( new VarDeclList()), new StatementList(stmts));
+		}
+		return new MethodDeclVoid(pos, name, new VarDeclList(vars), new StatementList(stmts));
+	}
+
+	//: formalList ::= <type> # ID formalListCont* =>
+	public List<VarDecl> formalDeclParams(Type t, int pos, String name, List<FormalDecl> list)
+	{
+		FormalDecl formalDecl = new FormalDecl(pos, t, name);
+		if(list == null)
+		{
+			List<VarDecl> arrList = Arrays.asList(formalDecl);
+			return new VarDeclList(arrList);
+		}
+		else
+		{
+			list.add(0, formalDecl);
+			List<VarDecl> arrList = new ArrayList<>();
+			for(int i = 0; i < list.size(); i++)
+			{
+				arrList.add(i, list.get(i));
+			}
+			return new VarDeclList(arrList);
+		}
+	}
+
+	//: formalListCont ::= `, <type> # ID =>
+	public FormalDecl extraFormalParams(Type t, int pos, String name)
+	{
+		return new FormalDecl(pos, t, name);
+	}
+
+
+
+
+
 
 	//// TYPES ////
 
@@ -357,8 +420,16 @@ public class MJGrammar
 		return new ArrayLookup(pos, e1, e2);
 	}
 	//: <exp1> ::= <exp1>  # `. ID =>
-	public Exp newInstVarAccess(Exp e1, int pos, String id) { return new InstVarAccess(pos, e1, id); }
-	//: <exp1> ::= # INTLIT =>
+	public Exp newInstVarAccess(Exp e1, int pos, String id)
+	{
+		if(Objects.equals(id, "length"))
+		{
+			return new ArrayLength(pos, e1);
+		}
+		return new InstVarAccess(pos, e1, id);
+	}
+	//: <exp1> ::= # INTLIT => Exp newIntegerLiteral(int, int)
+	//: <exp1> ::= # CHARLIT => Exp newIntegerLiteral(int, int)
 	public Exp newIntegerLiteral(int pos, int n) {
 		return new IntegerLiteral(pos, n);
 	}
