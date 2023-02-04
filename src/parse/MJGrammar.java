@@ -1,3 +1,18 @@
+/************************************************************************************
+ * Compilers Assignment 2
+ *
+ * Jude Gabriel
+ * February 4, 2023
+ *
+ * ENHANCEMENTS:
+ * Extension 1:
+ * 	Recognize do while loops
+ *
+ * Extension 2:
+ * 	Recognize switch statements
+ * ***********************************************************************************/
+
+
 package parse;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -6,6 +21,8 @@ import java.util.Objects;
 
 import errorMsg.*;
 import syntaxtree.*;
+
+import javax.swing.plaf.nimbus.State;
 
 public class MJGrammar
 		implements wrangLR.runtime.MessageObject,
@@ -195,18 +212,35 @@ public class MJGrammar
 	//: <stmt> ::= # `while `( <exp> `) <stmt> =>
 	public Statement newWhile(int pos, Exp exp, Statement statement) { return new While(pos, exp, statement); }
 
-	//: <stmt> ::= # `for `( forAssignment? `; #<exp>? `; # forIncrement? `) # <stmt> =>
-	public Statement newFor(int pos, Statement s1, int pos1, Exp e, int pos2, Statement s2, int pos3, Statement s3)
+	//: <stmt> ::= # `for `( # forAssignment? `; #<exp>? `; # forIncrement? `) # <stmt> =>
+	public Statement newFor(int pos, int assignmentPos, Statement s1, int pos1, Exp e, int pos2, Statement s2, int pos3, Statement s3)
 	{
-		// Increment level block
-		List<Statement> list1 = Arrays.asList(s3, s2);
-		Block block = new Block(pos, new StatementList(list1));
+		if(s1 == null)
+		{
+			s1 = new Block(assignmentPos, new StatementList());
+		}
+		List<Statement> list = Arrays.asList(s1);
 
-		// Top Level Block
-		if(e == null) e = new True(pos1);
-		While w = new While(pos, e, block);
-		List<Statement> list2 = Arrays.asList(s1, w);
-		return new Block(pos, new StatementList(list2));
+		if(e == null)
+		{
+			e = new True(pos1);
+		}
+
+		if(s3 == null)
+		{
+			s3 = new Block(pos3, new StatementList());
+		}
+
+		if(s2 == null)
+		{
+			s2 = new Block(pos2, new StatementList());
+		}
+
+		List<Statement> whileBody = Arrays.asList(s3, s2);
+		Block whileBlock = new Block(pos, new StatementList(whileBody));
+		List<Statement> l2 = new ArrayList<>(list);
+		l2.add(new While(pos, e, whileBlock));
+		return new Block(pos, new StatementList(l2));
 	}
 	//: forAssignment ::= callStmt => pass
 	//: forAssignment ::= <assign> => pass
@@ -219,6 +253,38 @@ public class MJGrammar
 	public Statement callStatementFor(int pos, Exp call)
 	{
 		return new CallStatement(pos, (Call)call);
+	}
+
+	//: <stmt> ::= # `switch `( <exp> `) `{ switchType* `} =>
+	public Statement newSwitch(int switchPos, Exp exp, List<Statement> s)
+	{
+		return new Switch(switchPos, exp, new StatementList(s));
+	}
+	//: switchType ::= <stmt> => pass
+	//: switchType ::= # `case <exp> `: =>
+	public Statement newCase(int pos, Exp exp)
+	{
+		return new Case(pos, exp);
+	}
+	//: switchType ::= # `default `: =>
+	public Statement newDefault(int pos)
+	{
+		return new Default(pos);
+	}
+
+	//: <stmt> ::= # `do # `{ <stmt>* `} #`while `( # <exp> `) `; =>
+	public Statement newDoWhile(int doPos, int stmtPos, List<Statement> stmt, int whilePos, int expPos, Exp exp)
+	{
+		Block stmtBlock = new Block(stmtPos, new StatementList(stmt));
+
+		Not not = new Not(expPos, exp);
+		Break newBreak = new Break(expPos);
+		If newIf = new If(whilePos, not, newBreak, new Block(whilePos, new StatementList()));
+
+		List <Statement> stmList2 = Arrays.asList(stmtBlock, newIf);
+
+		True newTrue = new True(doPos);
+		return new While(doPos, newTrue, new Block(doPos, new StatementList(stmList2)));
 	}
 
 
@@ -439,11 +505,21 @@ public class MJGrammar
 	//: <exp1> ::= `new # ID `( `) =>
 	public Exp newNewObject(int pos, String id) { return new NewObject(pos, new IdentifierType(pos, id)); }
 
+	//: <exp1> ::= # `new <type> `[ <exp> `] # <empty bracket pair>* =>
+	public Exp newArray(int pos, Type t, Exp exp, int pos1, List<Object> list)
+	{
+		ArrayType arrayType = new ArrayType(pos, t);
+		for(int i = 0; i < list.size(); i++)
+		{
+			arrayType = new ArrayType(pos1 + 2*i, arrayType);
+		}
+		return new NewArray(pos, arrayType, exp);
+	}
+
+
 	//: <exp1> ::= <callExp> =>pass
 	//: <exp1> ::= <callExp2> => pass
 	//: <exp1> ::= <callExp3> => pass
-
-	//	STUCK ON THIS ONE
 	//: <exp1> ::=  !<cast exp> `( <exp> `)  => pass
 
 	//: <callExp> ::= <exp1> `. # ID `( <expList>? `) =>
