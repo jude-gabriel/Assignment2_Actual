@@ -379,6 +379,7 @@ public class MJGrammar
 	//: <exp2> ::= <cast exp> => pass
 	//: <exp2> ::= <unary exp> => pass
 
+	/****** THIS MAY BE WRONG **********/
 	//: <cast exp> ::= # `( <type> `) <cast exp> =>
 	public Exp newCast(int pos, Type t, Exp e) {
 		return new Cast(pos, t, e);
@@ -443,7 +444,7 @@ public class MJGrammar
 	//: <exp1> ::= <callExp3> => pass
 
 	//	STUCK ON THIS ONE
-	////: <exp1> ::=  `( <exp> `) => pass
+	//: <exp1> ::=  !<cast exp> `( <exp> `)  => pass
 
 	//: <callExp> ::= <exp1> `. # ID `( <expList>? `) =>
 	public Exp newCall(Exp aobj, int pos, String aMethName, ExpList aparams)
